@@ -43,6 +43,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'core.middleware.IPBlacklistMiddleware'
 ]
 
 ROOT_URLCONF = 'amarshop.urls'
@@ -77,6 +78,13 @@ DATABASES = {
         'PASSWORD': 'uuSmo5PbQgAkyoOcZxe7nTSa3rBBhfUv',
         'HOST': 'dpg-cu6igsqj1k6c73f7taog-a.singapore-postgres.render.com',
         'PORT': 5432,
+    }
+}
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.db.backends.postgresql',
+        'LOCATION': 'amarshop_db_prod',
     }
 }
 
