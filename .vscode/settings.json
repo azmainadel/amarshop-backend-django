@@ -1,0 +1,14 @@
+{
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "server": "localhost",
+            "port": 5432,
+            "driver": "PostgreSQL",
+            "name": "amarshop_local",
+            "database": "amarshop_db",
+            "username": "db_admin",
+            "password": "123456"
+        }
+    ]
+}
