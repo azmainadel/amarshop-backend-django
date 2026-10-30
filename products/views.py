@@ -1,4 +1,7 @@
-from rest_framework import viewsets, filters
+from django.db.models import Q
+from rest_framework import viewsets, filters, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from django.views.decorators.cache import cache_page
@@ -55,6 +58,31 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     search_fields = ['name', 'description', 'brand__name', 'category__name']
     ordering_fields = ['price', 'rating']
+
+    @action(detail=False, methods=['POST'])
+    def search(self, request):
+        """POST {"searchTerm": "..."}: same fields as GET ?search=."""
+        term = str(request.data.get('searchTerm', '')).strip()
+        if not term:
+            return Response({'searchTerm': ['This field is required.']}, status=status.HTTP_400_BAD_REQUEST)
+
+        query = Q()
+        for word in term.split():
+            word_query = Q()
+            for field in self.search_fields:
+                word_query |= Q(**{f'{field}__icontains': word})
+            query &= word_query
+
+        products = self.get_queryset().filter(query).distinct()
+        return Response(ProductListSerializer(products, many=True).data)
+
+    @action(detail=False, methods=['POST'], url_path='filter')
+    def filter_products(self, request):
+        """POST body takes the same keys as the GET filters: category, brand, min_price, max_price, min_rating."""
+        product_filter = ProductFilter(data=request.data, queryset=self.get_queryset())
+        if not product_filter.is_valid():
+            return Response(product_filter.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(ProductListSerializer(product_filter.qs, many=True).data)
 
     def get_serializer_class(self):
         if self.action == 'retrieve':

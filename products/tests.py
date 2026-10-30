@@ -142,3 +142,29 @@ class ProductAPITest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data[0]['name'], 'Test Product 2')
         self.assertEqual(response.data[1]['name'], 'Test Product 1')
+
+    def test_post_search(self):
+        response = self.client.post(reverse('product-search'), {'searchTerm': 'Product 2'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual([p['name'] for p in response.data], ['Test Product 2'])
+
+        missing = self.client.post(reverse('product-search'), {}, format='json')
+        self.assertEqual(missing.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_post_filter(self):
+        other_brand = Brand.objects.create(name='Other')
+        Product.objects.create(category=self.category, brand=other_brand, name='Other Product',
+                               price=120, stock=1)
+
+        response = self.client.post(reverse('product-filter-products'),
+                                    {'brand': self.brand.id, 'min_price': 100}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual([p['name'] for p in response.data], ['Test Product 2'])
+
+        bad = self.client.post(reverse('product-filter-products'), {'min_price': 'abc'}, format='json')
+        self.assertEqual(bad.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_get_filter_by_category(self):
+        other = Category.objects.create(name='Books')
+        response = self.client.get(f"{self.list_url}?category={other.id}")
+        self.assertEqual(response.data, [])
