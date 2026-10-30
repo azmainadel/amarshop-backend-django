@@ -1,6 +1,7 @@
 from django.http import HttpResponseForbidden
 
-BLACKLIST = ['127.0.0.1', '192.168.1.1', '10.0.0.1']
+# 127.0.0.1 was listed here, which blocked every local request with 403.
+BLACKLIST = ['192.168.1.1', '10.0.0.1']
 
 class IPBlacklistMiddleware:
     def __init__(self, get_response):
@@ -18,5 +19,5 @@ class IPBlacklistMiddleware:
     def get_client_ip(self, request):
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
         if x_forwarded_for:
-            return x_forwarded_for.split(',')[0]
+            return x_forwarded_for.split(',')[0].strip()
         return request.META.get('REMOTE_ADDR')
