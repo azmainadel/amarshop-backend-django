@@ -5,7 +5,7 @@ from django.views.decorators.cache import cache_page
 from django.utils.decorators import method_decorator
 from django.core.cache import cache
 from .models import Category, Brand, Product
-from .serializers import CategorySerializer, BrandSerializer, ProductImageSerializer, ProductDetailSerializer, ProductListSerializer
+from .serializers import CategorySerializer, BrandSerializer, ProductImageSerializer, ProductDetailSerializer, ProductListSerializer, ProductWriteSerializer
 from .filters import ProductFilter
 
 
@@ -59,4 +59,6 @@ class ProductViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action == 'retrieve':
             return ProductDetailSerializer
+        if self.action in ('create', 'update', 'partial_update'):
+            return ProductWriteSerializer
         return ProductListSerializer

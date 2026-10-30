@@ -39,3 +39,9 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = ['id', 'name', 'description', 'price', 'images', 'rating', 'category', 'brand', 'created_at']
+
+# for product create/update
+class ProductWriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = ['id', 'name', 'description', 'price', 'rating', 'stock', 'is_active', 'category', 'brand']
