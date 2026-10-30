@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework_simplejwt.token_blacklist',
     'django_filters',
     'users',
     'products',
@@ -143,3 +144,8 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
+# Password reset emails print to the console unless an SMTP backend is configured.
+EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='no-reply@amarshop.local')
+# Frontend page that receives ?uid=...&token=... and calls the reset-confirm API.
+PASSWORD_RESET_URL = config('PASSWORD_RESET_URL', default='http://localhost:3000/reset-password')
