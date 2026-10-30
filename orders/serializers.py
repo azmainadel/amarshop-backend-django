@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Order, OrderItem, Payment
 from products.serializers import ProductListSerializer
+from users.models import Address
 
 
 class PaymentSerializer(serializers.ModelSerializer):
@@ -36,5 +37,12 @@ class OrderSerializer(serializers.ModelSerializer):
 #    "order_notes": " "
 # }
 class CheckoutSerializer(serializers.Serializer):
+    address_id = serializers.IntegerField()
     payment_method = serializers.CharField()
-    order_notes = serializers.CharField(required=False, allow_blank=True)
+    order_notes = serializers.CharField(required=False, allow_blank=True, default='')
+
+    def validate_address_id(self, value):
+        user = self.context['request'].user
+        if not Address.objects.filter(id=value, user=user).exists():
+            raise serializers.ValidationError("Address not found")
+        return value
