@@ -10,6 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
+from django.contrib.auth.models import update_last_login
 from .serializers import (UserSerializer, UserLoginSerializer, AddressSerializer, LogoutSerializer,
                           PasswordResetRequestSerializer, PasswordResetConfirmSerializer)
 from .models import User, Address
@@ -39,6 +40,8 @@ def login_user(request):
         
         user = authenticate(email=email, password=password)
         if user:
+            # Feeds the admin activity report (simplejwt doesn't touch last_login by default).
+            update_last_login(None, user)
             refresh = RefreshToken.for_user(user)
             return Response({
                 'refresh_token': str(refresh),
