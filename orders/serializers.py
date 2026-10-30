@@ -38,7 +38,8 @@ class OrderSerializer(serializers.ModelSerializer):
 # }
 class CheckoutSerializer(serializers.Serializer):
     address_id = serializers.IntegerField()
-    payment_method = serializers.CharField()
+    # Optional now that payment happens in payment/mock/; kept so old clients don't break.
+    payment_method = serializers.CharField(required=False)
     order_notes = serializers.CharField(required=False, allow_blank=True, default='')
 
     def validate_address_id(self, value):
@@ -46,3 +47,10 @@ class CheckoutSerializer(serializers.Serializer):
         if not Address.objects.filter(id=value, user=user).exists():
             raise serializers.ValidationError("Address not found")
         return value
+
+
+class MockPaymentSerializer(serializers.Serializer):
+    order_id = serializers.IntegerField()
+    payment_method = serializers.CharField()
+    # Free-form mock card/wallet details; {"simulate": "fail"} produces a declined payment.
+    payment_info = serializers.DictField(required=False, default=dict)

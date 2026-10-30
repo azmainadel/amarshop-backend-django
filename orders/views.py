@@ -1,7 +1,7 @@
 from django.db import transaction
 from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated
-from .serializers import OrderSerializer, CheckoutSerializer
+from .serializers import OrderSerializer, CheckoutSerializer, MockPaymentSerializer, PaymentSerializer
 from .models import Order, OrderItem, Payment
 from .constants import DELIVERY_CHARGE
 from cart.models import Cart
@@ -18,19 +18,23 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         return Order.objects.filter(user=self.request.user).prefetch_related('items__product')
 
-    def _process_payment(self, order: Order, payment_method):
-        """Mock payment processor"""
-        payment = Payment.objects.create(
+    def _process_payment(self, order: Order, payment_method, payment_info=None):
+        """Mock payment processor. Pass payment_info={"simulate": "fail"} to get a declined payment."""
+        succeeded = (payment_info or {}).get('simulate') != 'fail'
+        # Payment is one-to-one with Order, so a retry after a failure updates the same row.
+        payment, _ = Payment.objects.update_or_create(
             order=order,
-            amount=order.total_amount + order.delivery_charge,
-            payment_method=payment_method,
-            transaction_id=f"test_txn_{order.id}",
-            status='SUCCESS'
+            defaults={
+                'amount': order.total_amount + order.delivery_charge,
+                'payment_method': payment_method,
+                'transaction_id': f"test_txn_{order.id}" if succeeded else '',
+                'status': 'SUCCESS' if succeeded else 'FAILED',
+            },
         )
 
         if payment.status == 'SUCCESS':
             order.status = 'PAID'
-            order.save()
+            order.save(update_fields=['status', 'updated_at'])
 
         return payment
 
@@ -70,13 +74,31 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
                 item.product.stock -= item.quantity
                 item.product.save(update_fields=['stock'])
 
-            payment = self._process_payment(order, serializer.validated_data['payment_method'])
-
-            if payment.status != 'SUCCESS':
-                transaction.set_rollback(True)
-                return Response({"error": "Payment failed!"}, status=status.HTTP_402_PAYMENT_REQUIRED)
-
             cart.items.all().delete()
 
-        # send email, sms
+        # The order is PENDING with stock reserved; POST payment/mock/ pays it.
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['POST'], url_path='payment/mock', serializer_class=MockPaymentSerializer)
+    def mock_payment(self, request):
+        serializer = MockPaymentSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        with transaction.atomic():
+            order = Order.objects.select_for_update().filter(
+                id=serializer.validated_data['order_id'], user=request.user).first()
+            if order is None:
+                return Response({"error": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
+            if order.status != 'PENDING':
+                return Response({"error": f"Order is {order.status.lower()}, not awaiting payment"},
+                                status=status.HTTP_400_BAD_REQUEST)
+
+            payment = self._process_payment(order, serializer.validated_data['payment_method'],
+                                            serializer.validated_data.get('payment_info'))
+
+        if payment.status != 'SUCCESS':
+            return Response({"error": "Payment failed!", "payment": PaymentSerializer(payment).data},
+                            status=status.HTTP_402_PAYMENT_REQUIRED)
+
+        # send email, sms
+        return Response(OrderSerializer(order).data, status=status.HTTP_200_OK)
