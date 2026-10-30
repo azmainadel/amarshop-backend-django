@@ -70,25 +70,23 @@ WSGI_APPLICATION = 'amarshop.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+# Defaults match docker/docker-compose.yml. Override with env vars (or a .env file) elsewhere.
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'amarshop_db_prod',
-        'USER': 'db_admin',
-        'PASSWORD': 'uuSmo5PbQgAkyoOcZxe7nTSa3rBBhfUv',
-        'HOST': 'dpg-cu6igsqj1k6c73f7taog-a.singapore-postgres.render.com',
-        'PORT': 5432,
+        'NAME': config('DB_NAME', default='amarshop_db'),
+        'USER': config('DB_USER', default='db_admin'),
+        'PASSWORD': config('DB_PASSWORD', default='123456'),
+        'HOST': config('DB_HOST', default='localhost'),
+        'PORT': config('DB_PORT', default=5432, cast=int),
     }
 }
 
 CACHES = {
     'default': {
-        'BACKEND': 'django.db.backends.postgresql',
-        'LOCATION': 'amarshop_db_prod',
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
     }
 }
-
-# postgresql://db_admin:uuSmo5PbQgAkyoOcZxe7nTSa3rBBhfUv@dpg-cu6igsqj1k6c73f7taog-a.singapore-postgres.render.com/amarshop_db_prod
 
 
 # Password validation
@@ -144,3 +142,4 @@ REST_FRAMEWORK = {
 SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
+
